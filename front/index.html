@@ -7,7 +7,7 @@
         <link rel="stylesheet" href="style.css">
     </head>
     <body>
-        <div id="first" style="display:none">
+        <div id="first" style="display:block">
             <div id="go">
                 行き
             </div>
@@ -16,7 +16,11 @@
             </div>
         </div>
 
-        <div id="last" style="display:block">
+        <div class="loader" id="loading" style="display:none">
+
+        </div>
+
+        <div id="last" style="display:none">
             <div id="mode">
                 行きor帰り
             </div>
@@ -29,15 +33,15 @@
             </div>
 
             <div id="menu" class="setDiv">
-                <div id="from">
-                    乗り場<br />変更
-                </div>
                 <div id="to">
                     行き先<br />変更
+                </div>
+                <div id="from">
+                    乗り場<br />変更
                 </div>
             </div>
         </div>
 
     </body>
-    <!--script type="text/javascript" src="uiOperation.js"></script-->
+    <script type="text/javascript" src="uiOperation.js"></script>
 </html>
