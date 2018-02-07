@@ -1,0 +1,100 @@
+.setDiv{
+    display: flex;
+    display: -moz-flex;
+    display: -o-flex;
+    display: -webkit-flex;
+    display: -ms-flex;
+    flex-direction: row;
+    -moz-flex-direction: row;
+    -o-flex-direction: row;
+    -webkit-flex-direction: row;
+    -ms-flex-direction: row;
+}
+
+.fourWayReset{
+    top: 0;
+    left: 0;
+    bottom: 0;
+    right: 0;
+}
+
+hr{
+    border: solid thin rgba(33,33,33 ,1);
+}
+
+
+#first > div{
+    width: 80vw;
+    height: 25vh;
+    border: solid rgba(33,33,33 ,1);
+    margin-top: 15vh;
+    margin-left: 10vw;
+    box-sizing: border-box;
+    font-size: 10vh;
+    line-height: 25vh;
+    text-align: center;
+    border-radius: 5vw;
+}
+
+#mode{
+    margin-top: 7.5vh;
+    width: 100%;
+    text-align: center;
+    font-size: 5vh;
+}
+
+#core{
+    width: 85vw;
+    height: 85vw;
+    border: solid rgba(33,33,33 ,1);
+    border-radius: 50%;
+    box-sizing: border-box;
+    margin-left: 7.5vw;
+    margin-top: 5vh;
+}
+
+#core > div{
+    text-align: center;
+}
+
+#title{
+    margin-top: 7.5vh;
+    font-size: 5vh;
+}
+
+#time{
+    margin-top: 5vh;
+    font-size: 10vh;
+}
+
+#inmin{
+    margin-top: 4vh;
+    font-size: 5vh;
+}
+
+#stop{
+    margin-top: 1vh;
+    font-size: 5vh;
+}
+
+#menu > div{
+    width: 30vw;
+    height: 20vh;
+    font-size: 5vh;
+    text-align: center;
+    line-height: 10vh;
+    margin-top: 5vh;
+}
+
+#from{
+    border: solid rgba(33,33,33 ,1);
+    border-radius: 0 5vw 5vw 0;
+    border-left: 0;
+}
+
+#to{
+    margin-left: auto;
+    border: solid rgba(33,33,33 ,1);
+    border-radius: 5vw 0 0 5vw;
+    border-right: 0;
+}
