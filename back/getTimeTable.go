@@ -4,18 +4,31 @@ import (
   "fmt"
   "html"
   "log"
+  "encoding/json"
   "net/http"
 
+  "github.com/gorilla/mux"
   "github.com/mattn/go-sqlite3"
 )
 
-type go struct {
+type gp struct{
+    Time int `json:"time"`
+    From int `json:"from"`
+    To int `json:"to"`
+}
+
+type return struct{
+    Time int `json:"fast"`
+    From int `json:"from"`
+}
+
+type goFull struct {
 	Fast []int `json:"fast"`
 	From []int `json:"from"`
 	To   []int `json:"to"`
 }
 
-type return struct {
+type returnFull struct {
 	Fast []int `json:"fast"`
 	From []int `json:"from"`
 }
@@ -23,209 +36,94 @@ type return struct {
 func main() {
     goDb, goErr := sql.Open("sqlite3", "./go.db");
     returnDb, returnErr := sql.Open("sqlite3", "./retrun.db");
+    r := mux.NewRouter()
 
     if goErr != nil || returnErr != nil{
       panic(err)
     }
 
-    http.HandleFunc("/", func(w http.ResponseWriter, r *http.Request) {
-    fmt.Fprintf(w, "Hello, %q", html.EscapeString(r.URL.Path))
-  })
+    r.HandleFunc("/api/goFast", getGoFastJson)
+    r.HandleFunc("/api/go", getGoTime)
+    r.HandleFunc("/api/goFull", )
 
-  log.Fatal(http.ListenAndServe(":8080", nil))
+    r.HandleFunc("/api/returnFast", )
+    r.HandleFunc("/api/return", )
+    r.HandleFunc("/api/returnFull", )
+
+    http.ListenAndServe(":7650", r)
+}
+
+func getGoFastJson(w http.ResponseWriter, r *http.Request){
+    dayType := getDayType()
+    row := goDb.QueryRow(
+        `SELECT * FROM "GO"
+        WHERE strftime('%H','now','localtime')*60+strftime('%M','now','localtime')<time AND dayType=?
+        ORDER BY time ASC LIMIT 1`,
+        dayType
+    )
+
+    ans := go{}
+    row.Scan(&ans.time,&ans.from,&ans.to);
+    outJson, err := json.Marshal(&ans)
+    if err != nil {
+        panic(err)
+    }
+    w.Header().Set("Content-Type", "application/json")
+    fmt.Fprint(w, string(outJson))
+}
+
+func QueryStringHandler() {
+    q := r.URL.Query()
+}
+
+func getGoTimeJson(fromto,id)  {
+    row:=getGoTime(fromto,id);
 }
 
 func getGoTime(fromto,id)  {
-    //曜日はtime.Weekday()で受け取れて、0が日曜日、1が……という仕組み。祝日どうするか考えてないけど未実装のままいこう……
-    //ちょっと一旦寝て考え直します//
-    var row
-    switch fromto {
-    case 0: //from
-        switch id {
-        case 0:
-            if time.Weekday()==0 {
-                row := goDb.QueryRow(
-                    `SELECT * FROM "GO"
-                    WHERE strftime('%H','now','localtime')*60+strftime('%M','now','localtime')<time AND from=0 AND dayType=2
-                    ORDER BY time ASC LIMIT 1`
-                    )
-            }else if time.Weekday()<6{
-                row := goDb.QueryRow(
-                    `SELECT * FROM "GO"
-                    WHERE strftime('%H','now','localtime')*60+strftime('%M','now','localtime')<time AND from=0 AND dayType=0
-                    ORDER BY time ASC LIMIT 1`
-                    )
-            }else{
-                row := goDb.QueryRow(
-                    `SELECT * FROM "GO"
-                    WHERE strftime('%H','now','localtime')*60+strftime('%M','now','localtime')<time AND from=0 AND dayType=1
-                    ORDER BY time ASC LIMIT 1`
-                    )
-            }
-        case 1:
-            if time.Weekday()==0 {
-                row := goDb.QueryRow(
-                    `SELECT * FROM "GO"
-                    WHERE strftime('%H','now','localtime')*60+strftime('%M','now','localtime')<time AND from=1 AND dayType=2
-                    ORDER BY time ASC LIMIT 1`
-                    )
-            }else if time.Weekday()<7{
-                row := goDb.QueryRow(
-                    `SELECT * FROM "GO"
-                    WHERE strftime('%H','now','localtime')*60+strftime('%M','now','localtime')<time AND from=1 AND dayType=0
-                    ORDER BY time ASC LIMIT 1`
-                    )
-            }else{
-                row := goDb.QueryRow(
-                    `SELECT * FROM "GO"
-                    WHERE strftime('%H','now','localtime')*60+strftime('%M','now','localtime')<time AND from=1 AND dayType=1
-                    ORDER BY time ASC LIMIT 1`
-                    )
-            }
-        }
-    case 1: //to
-        switch id {
-        case 0:
-            return "No Data."
-            /*
-            if time.Weekday()==0 {
-                row := goDb.QueryRow(
-                    `SELECT * FROM "GO"
-                    WHERE strftime('%H','now','localtime')*60+strftime('%M','now','localtime')<time AND to=0 AND dayType=2
-                    ORDER BY time ASC LIMIT 1`
-                    )
-            */
-            }else if time.Weekday()<6{
-                row := goDb.QueryRow(
-                    `SELECT * FROM "GO"
-                    WHERE strftime('%H','now','localtime')*60+strftime('%M','now','localtime')<time AND to=0 AND dayType=0
-                    ORDER BY time ASC LIMIT 1`
-                    )
-            }else{
-                row := goDb.QueryRow(
-                    `SELECT * FROM "GO"
-                    WHERE strftime('%H','now','localtime')*60+strftime('%M','now','localtime')<time AND to=0 AND dayType=1
-                    ORDER BY time ASC LIMIT 1`
-                    )
-            }
-        case 1:
-            if time.Weekday()==0 {
-                row := goDb.QueryRow(
-                    `SELECT * FROM "GO"
-                    WHERE strftime('%H','now','localtime')*60+strftime('%M','now','localtime')<time AND to=1 AND dayType=2
-                    ORDER BY time ASC LIMIT 1`
-                    )
-            }else if time.Weekday()<6 {
-                row := goDb.QueryRow(
-                    `SELECT * FROM "GO"
-                    WHERE strftime('%H','now','localtime')*60+strftime('%M','now','localtime')<time AND to=1 AND dayType=0
-                    ORDER BY time ASC LIMIT 1`
-                    )
-            }else{
-                row := goDb.QueryRow(
-                    `SELECT * FROM "GO"
-                    WHERE strftime('%H','now','localtime')*60+strftime('%M','now','localtime')<time AND to=1 AND dayType=1
-                    ORDER BY time ASC LIMIT 1`
-                    )
-            }
-        case 2:
-            if time.Weekday()==0 {
-                row := goDb.QueryRow(
-                    `SELECT * FROM "GO"
-                    WHERE strftime('%H','now','localtime')*60+strftime('%M','now','localtime')<time AND to=2 AND dayType=2
-                    ORDER BY time ASC LIMIT 1`
-                    )
-            }else if time.Weekday()<6{
-                row := goDb.QueryRow(
-                    `SELECT * FROM "GO"
-                    WHERE strftime('%H','now','localtime')*60+strftime('%M','now','localtime')<time AND to=2 AND dayType=0
-                    ORDER BY time ASC LIMIT 1`
-                    )
-            }else{
-                row := goDb.QueryRow(
-                    `SELECT * FROM "GO"
-                    WHERE strftime('%H','now','localtime')*60+strftime('%M','now','localtime')<time AND to=2 AND dayType=1
-                    ORDER BY time ASC LIMIT 1`
-                    )
-            }
-        }
+    dayType := getDayType()
+    var mode string
+
+    if fromto==0{
+        mode="from"
+    }else{
+        mode="to"
     }
+
+    row := goDb.QueryRow(
+        `SELECT * FROM "GO"
+        WHERE strftime('%H','now','localtime')*60+strftime('%M','now','localtime')<time AND ?=? AND dayType=?
+        ORDER BY time ASC LIMIT 1`,
+        mode,
+        id,
+        dayType,
+    )
+
+    return row
 }
 
-func getReturnTime(id)  {
-    switch id {
-    case 0:
-        if time.Weekday()==0 {
-            return "No Data."
-            /*
-            row := returnDb.QueryRow(
-                `SELECT * FROM "RETURN"
-                WHERE strftime('%H','now','localtime')*60+strftime('%M','now','localtime')<time AND from=0 AND dayType=2
-                ORDER BY time ASC LIMIT 1`
-                )
-            */
-        }else if time.Weekday()<6{
-            row := returnDb.QueryRow(
-                `SELECT * FROM "RETURN"
-                WHERE strftime('%H','now','localtime')*60+strftime('%M','now','localtime')<time AND from=0 AND dayType=0
-                ORDER BY time ASC LIMIT 1`
-                )
-        }else{
-            row := returnDb.QueryRow(
-                `SELECT * FROM "RETURN"
-                WHERE strftime('%H','now','localtime')*60+strftime('%M','now','localtime')<time AND from=0 AND dayType=1
-                ORDER BY time ASC LIMIT 1`
-                )
-        }
-    case 1:
-        if time.Weekday()==0 {
-            row := returnDb.QueryRow(
-                `SELECT * FROM "RETURN"
-                WHERE strftime('%H','now','localtime')*60+strftime('%M','now','localtime')<time AND from=1 AND dayType=2
-                ORDER BY time ASC LIMIT 1`
-                )
-        }else if time.Weekday()<6{
-            row := returnDb.QueryRow(
-                `SELECT * FROM "RETURN"
-                WHERE strftime('%H','now','localtime')*60+strftime('%M','now','localtime')<time AND from=1 AND dayType=0
-                ORDER BY time ASC LIMIT 1`
-                )
-        }else{
-            row := returnDb.QueryRow(
-                `SELECT * FROM "RETURN"
-                WHERE strftime('%H','now','localtime')*60+strftime('%M','now','localtime')<time AND from=1 AND dayType=1
-                ORDER BY time ASC LIMIT 1`
-                )
-        }
-    }
-    case 2:
-        if time.Weekday()==0 {
-            //存在しない
-            return "No Data."
-            /*
-            row := returnDb.QueryRow(
-                `SELECT * FROM "RETURN"
-                WHERE strftime('%H','now','localtime')*60+strftime('%M','now','localtime')<time AND from=2 AND dayType=2
-                ORDER BY time ASC LIMIT 1`
-                )
-            */
-        }else if time.Weekday()<6{
-            row := returnDb.QueryRow(
-                `SELECT * FROM "RETURN"
-                WHERE strftime('%H','now','localtime')*60+strftime('%M','now','localtime')<time AND from=2 AND dayType=0
-                ORDER BY time ASC LIMIT 1`
-                )
-        }else{
-            //存在しない
-            return "No Data."
-            /*
-            row := returnDb.QueryRow(
-                `SELECT * FROM "RETURN"
-                WHERE strftime('%H','now','localtime')*60+strftime('%M','now','localtime')<time AND from=2 AND dayType=1
-                ORDER BY time ASC LIMIT 1`
-                )
-            */
-        }
-    }
 
+func getReturnTime(id)  {
+    dayType := getDayType()
+    row := returnDb.QueryRow(
+        `SELECT * FROM "RETURN"
+        WHERE strftime('%H','now','localtime')*60+strftime('%M','now','localtime')<time AND from=? AND dayType=?
+        ORDER BY time ASC LIMIT 1`,
+        id,
+        dayType
+    )
+    return row
+}
+
+
+func getDayType()  {
+    var t int
+    if time.Weekday()==0{
+        t = 2
+    }else if time.Weekday()<6{
+        t = 0
+    }else{
+        t = 1
+    }
+    return t
 }
