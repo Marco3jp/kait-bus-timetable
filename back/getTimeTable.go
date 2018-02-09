@@ -11,13 +11,13 @@ import (
   "github.com/mattn/go-sqlite3"
 )
 
-type gp struct{
+type goOne struct{
     Time int `json:"time"`
     From int `json:"from"`
     To int `json:"to"`
 }
 
-type return struct{
+type returnOne struct{
     Time int `json:"fast"`
     From int `json:"from"`
 }
@@ -43,12 +43,12 @@ func main() {
     }
 
     r.HandleFunc("/api/goFast", getGoFastJson)
-    r.HandleFunc("/api/go", getGoTime)
-    r.HandleFunc("/api/goFull", )
+    r.HandleFunc("/api/go", getGoJson) //go?fromto=XX?id=XXと送ること//
+    r.HandleFunc("/api/goFull", getGoFullJson)
 
-    r.HandleFunc("/api/returnFast", )
-    r.HandleFunc("/api/return", )
-    r.HandleFunc("/api/returnFull", )
+    r.HandleFunc("/api/returnFast", getReturnFastJson)
+    r.HandleFunc("/api/return", getReturnJson) //return?id=XXと送ること//
+    r.HandleFunc("/api/returnFull", getReturnFullJson)
 
     http.ListenAndServe(":7650", r)
 }
@@ -62,7 +62,7 @@ func getGoFastJson(w http.ResponseWriter, r *http.Request){
         dayType
     )
 
-    ans := go{}
+    ans := goOne{}
     row.Scan(&ans.time,&ans.from,&ans.to);
     outJson, err := json.Marshal(&ans)
     if err != nil {
@@ -72,13 +72,41 @@ func getGoFastJson(w http.ResponseWriter, r *http.Request){
     fmt.Fprint(w, string(outJson))
 }
 
-func QueryStringHandler() {
+func getGoJson(w http.ResponseWriter, r *http.Request){
     q := r.URL.Query()
+    row:=getGoTime(q.fromto,q.id);
+
+    ans := goOne{}
+    row.Scan(&ans.time,&ans.from,&ans.to);
+    outJson, err := json.Marshal(&ans)
+    if err != nil {
+        panic(err)
+    }
+    w.Header().Set("Content-Type", "application/json")
+    fmt.Fprint(w, string(outJson))
 }
 
-func getGoTimeJson(fromto,id)  {
-    row:=getGoTime(fromto,id);
+func getGoFullJson(w http.ResponseWriter, r *http.Request)  {
+    ans := goFull{}
+    var [2]from int
+    var [3]to int
+
+    for i := 0; i < 2; i++ {
+        from[i]=getGoTime(0,i)
+    }
+    for i := 0; i < 3; i++ {
+        to[i]=getGoTime(1,i)
+    }
+
+    //あとはここで最速を判定して、ans内にまとめてください
+    outJson, err := json.Marshal(&ans)
+    if err != nil {
+        panic(err)
+    }
+    w.Header().Set("Content-Type", "application/json")
+    fmt.Fprint(w, string(outJson))
 }
+
 
 func getGoTime(fromto,id)  {
     dayType := getDayType()
@@ -99,7 +127,9 @@ func getGoTime(fromto,id)  {
         dayType,
     )
 
-    return row
+    var time int
+    row.Scan(&time,)
+    return
 }
 
 
