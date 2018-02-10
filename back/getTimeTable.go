@@ -4,6 +4,7 @@ import (
   "fmt"
   "html"
   "log"
+  "time"
   "encoding/json"
   "net/http"
 
@@ -53,17 +54,22 @@ func main() {
     http.ListenAndServe(":7650", r)
 }
 
+//最速を返す関数
 func getGoFastJson(w http.ResponseWriter, r *http.Request){
     dayType := getDayType()
+    nowTime := getNowTime()
+
     row := goDb.QueryRow(
         `SELECT * FROM "GO"
-        WHERE strftime('%H','now','localtime')*60+strftime('%M','now','localtime')<time AND dayType=?
+        WHERE ?<time AND dayType=?
         ORDER BY time ASC LIMIT 1`,
+        nowTime,
         dayType
     )
 
     ans := goOne{}
-    row.Scan(&ans.time,&ans.from,&ans.to);
+    var tmp int //読み捨て
+    row.Scan(&ans.time,&ans.from,&ans.to,&tmp);
     outJson, err := json.Marshal(&ans)
     if err != nil {
         panic(err)
@@ -72,12 +78,14 @@ func getGoFastJson(w http.ResponseWriter, r *http.Request){
     fmt.Fprint(w, string(outJson))
 }
 
+//特定種の最速を返す
 func getGoJson(w http.ResponseWriter, r *http.Request){
     q := r.URL.Query()
     row:=getGoTime(q.fromto,q.id);
 
     ans := goOne{}
-    row.Scan(&ans.time,&ans.from,&ans.to);
+    var tmp int
+    row.Scan(&ans.time,&ans.from,&ans.to,&tmp);
     outJson, err := json.Marshal(&ans)
     if err != nil {
         panic(err)
@@ -86,6 +94,7 @@ func getGoJson(w http.ResponseWriter, r *http.Request){
     fmt.Fprint(w, string(outJson))
 }
 
+//行き各種の最速をすべて返す
 func getGoFullJson(w http.ResponseWriter, r *http.Request)  {
     ans := goFull{}
     var [2]from int
@@ -98,7 +107,10 @@ func getGoFullJson(w http.ResponseWriter, r *http.Request)  {
         to[i]=getGoTime(1,i)
     }
 
-    //あとはここで最速を判定して、ans内にまとめてください
+    ans.fast = checkGoFastTime(from,to)
+    ans.from = from
+    ans.to = to
+
     outJson, err := json.Marshal(&ans)
     if err != nil {
         panic(err)
@@ -107,9 +119,11 @@ func getGoFullJson(w http.ResponseWriter, r *http.Request)  {
     fmt.Fprint(w, string(outJson))
 }
 
-
-func getGoTime(fromto,id)  {
+//検索に使う部分、返すのは時間//
+func getGoTime(fromto int,id int) int{
     dayType := getDayType()
+    nowTime := getNowTime()
+
     var mode string
 
     if fromto==0{
@@ -120,25 +134,29 @@ func getGoTime(fromto,id)  {
 
     row := goDb.QueryRow(
         `SELECT * FROM "GO"
-        WHERE strftime('%H','now','localtime')*60+strftime('%M','now','localtime')<time AND ?=? AND dayType=?
+        WHERE ?<time AND ?=? AND dayType=?
         ORDER BY time ASC LIMIT 1`,
+        nowTime,
         mode,
         id,
         dayType,
     )
 
     var time int
-    row.Scan(&time,)
-    return
+    var [3]tmp int //読み捨て
+    row.Scan(&time,tmp[0],tmp[1],tmp[2])
+    return time
 }
 
 
 func getReturnTime(id)  {
     dayType := getDayType()
+    nowTime := getNowTime()
     row := returnDb.QueryRow(
         `SELECT * FROM "RETURN"
-        WHERE strftime('%H','now','localtime')*60+strftime('%M','now','localtime')<time AND from=? AND dayType=?
+        WHERE ?<time AND from=? AND dayType=?
         ORDER BY time ASC LIMIT 1`,
+        nowTime,
         id,
         dayType
     )
@@ -146,14 +164,38 @@ func getReturnTime(id)  {
 }
 
 
+
 func getDayType()  {
-    var t int
-    if time.Weekday()==0{
-        t = 2
-    }else if time.Weekday()<6{
-        t = 0
+    var n int
+    t := time.Now()
+    if t.Weekday()==0{
+        n = 2
+    }else if t.Weekday()<6{
+        n = 0
     }else{
-        t = 1
+        n = 1
     }
-    return t
+    return n
+}
+
+func getNowTime(){
+    t := time.Now();
+    return t.Hour()*60+t.Minute()
+}
+
+func checkGoFastTime([2]a [3]b) {
+    fromFast := [2]int{a[0],0}
+    if(a[1]<fromFast[0]){
+        fromFast[0]=a[1]
+        fromFast[1]=1
+    }
+
+    toFast := [2]int{b[0],0}
+    for i := 1; i < 3; i++ {
+        if b[i]<toFast[0]{
+            toFast[0]=b[i]
+            toFast[1]=i
+        }
+    }
+    return [fromFast[0],fromFast[1],toFast[1]]
 }
