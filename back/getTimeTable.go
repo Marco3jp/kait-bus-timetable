@@ -148,8 +148,75 @@ func getGoTime(fromto int,id int) int{
     return time
 }
 
+func getReturnFastJson(w http.ResponseWriter, r *http.Request){
+    dayType := getDayType()
+    nowTime := getNowTime()
 
-func getReturnTime(id)  {
+    row := goDb.QueryRow(
+        `SELECT * FROM "RETURN"
+        WHERE ?<time AND dayType=?
+        ORDER BY time ASC LIMIT 1`,
+        nowTime,
+        dayType
+    )
+
+    ans := returnOne{}
+    var tmp int //読み捨て
+    row.Scan(&ans.time,&ans.from,&tmp);
+    outJson, err := json.Marshal(&ans)
+    if err != nil {
+        panic(err)
+    }
+    w.Header().Set("Content-Type", "application/json")
+    fmt.Fprint(w, string(outJson))
+}
+
+//特定種の最速を返す
+func getReturnJson(w http.ResponseWriter, r *http.Request){
+    q := r.URL.Query()
+    row:=getGoTime(q.id);
+
+    ans := returnOne{}
+    var tmp int
+    row.Scan(&ans.time,&ans.from,&tmp);
+    outJson, err := json.Marshal(&ans)
+    if err != nil {
+        panic(err)
+    }
+    w.Header().Set("Content-Type", "application/json")
+    fmt.Fprint(w, string(outJson))
+}
+
+//帰り各種の最速をすべて返す
+func getReturnFullJson(w http.ResponseWriter, r *http.Request)  {
+    ans := returnFull{}
+    var [3]from int
+
+    for i := 0; i < 3; i++ {
+        from[i]=getReturnTime(i)
+    }
+
+    fast := [2]int{from[0],0}
+
+    for i := 1; i < 3; i++ {
+        if(fast[0]>from[i]){
+            fast[0]==from[i]
+            fast[1]==i
+        }
+    }
+
+    ans.fast = fast
+    ans.from = from
+
+    outJson, err := json.Marshal(&ans)
+    if err != nil {
+        panic(err)
+    }
+    w.Header().Set("Content-Type", "application/json")
+    fmt.Fprint(w, string(outJson))
+}
+
+func getReturnTime(id int) int{
     dayType := getDayType()
     nowTime := getNowTime()
     row := returnDb.QueryRow(
@@ -160,10 +227,12 @@ func getReturnTime(id)  {
         id,
         dayType
     )
-    return row
+
+    var time int
+    var [2]tmp int //読み捨て
+    row.Scan(&time,tmp[0],tmp[1])
+    return time
 }
-
-
 
 func getDayType()  {
     var n int
