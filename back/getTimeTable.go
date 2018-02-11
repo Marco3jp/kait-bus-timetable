@@ -1,270 +1,341 @@
 package main
 
 import (
-  "fmt"
-  "html"
-  "log"
-  "time"
-  "encoding/json"
-  "net/http"
+	"database/sql"
+	"encoding/json"
+	"fmt"
+	"net/http"
+	"strconv"
+	"time"
 
-  "github.com/gorilla/mux"
-  "github.com/mattn/go-sqlite3"
+	"github.com/gorilla/mux"
+	_ "github.com/mattn/go-sqlite3"
 )
 
-type goOne struct{
-    Time int `json:"time"`
-    From int `json:"from"`
-    To int `json:"to"`
+type goOne struct {
+	Time int `json:"time"`
+	From int `json:"from"`
+	To   int `json:"to"`
 }
 
-type returnOne struct{
-    Time int `json:"fast"`
-    From int `json:"from"`
+type returnOne struct {
+	Time int `json:"time"`
+	From int `json:"from"`
 }
 
 type goFull struct {
-	Fast []int `json:"fast"`
-	From []int `json:"from"`
-	To   []int `json:"to"`
+	Fast [3]int `json:"fast"`
+	From [2]int `json:"from"`
+	To   [3]int `json:"to"`
 }
 
 type returnFull struct {
-	Fast []int `json:"fast"`
-	From []int `json:"from"`
+	Fast [2]int `json:"fast"`
+	From [3]int `json:"from"`
 }
 
+// Directory for test //
+var goDb, goErr = sql.Open("sqlite3", "/home/bustime/DataBase/go.db")
+var returnDb, returnErr = sql.Open("sqlite3", "/home/bustime/DataBase/return.db")
+
 func main() {
-    goDb, goErr := sql.Open("sqlite3", "./go.db");
-    returnDb, returnErr := sql.Open("sqlite3", "./retrun.db");
-    r := mux.NewRouter()
+	r := mux.NewRouter()
+	if goErr != nil {
+		panic(goErr)
+	} else if returnErr != nil {
+		panic(returnErr)
+	}
 
-    if goErr != nil || returnErr != nil{
-      panic(err)
-    }
+	r.HandleFunc("/api/goFast", getGoFastJson)
+	r.HandleFunc("/api/go", getGoJson) //go?fromto=XX?id=XXと送ること//
+	r.HandleFunc("/api/goFull", getGoFullJson)
 
-    r.HandleFunc("/api/goFast", getGoFastJson)
-    r.HandleFunc("/api/go", getGoJson) //go?fromto=XX?id=XXと送ること//
-    r.HandleFunc("/api/goFull", getGoFullJson)
+	r.HandleFunc("/api/returnFast", getReturnFastJson)
+	r.HandleFunc("/api/return", getReturnJson) //return?id=XXと送ること//
+	r.HandleFunc("/api/returnFull", getReturnFullJson)
 
-    r.HandleFunc("/api/returnFast", getReturnFastJson)
-    r.HandleFunc("/api/return", getReturnJson) //return?id=XXと送ること//
-    r.HandleFunc("/api/returnFull", getReturnFullJson)
-
-    http.ListenAndServe(":7650", r)
+	http.ListenAndServe(":7650", r)
 }
 
 //最速を返す関数
-func getGoFastJson(w http.ResponseWriter, r *http.Request){
-    dayType := getDayType()
-    nowTime := getNowTime()
+func getGoFastJson(w http.ResponseWriter, r *http.Request) {
+	dayType := getDayType()
+	nowTime := getNowTime()
 
-    row := goDb.QueryRow(
-        `SELECT * FROM "GO"
-        WHERE ?<time AND dayType=?
-        ORDER BY time ASC LIMIT 1`,
-        nowTime,
-        dayType
-    )
+	row := goDb.QueryRow(
+		"SELECT * FROM GO WHERE time > ? AND dayType = ? ORDER BY time ASC LIMIT 1",
+		nowTime,
+		dayType,
+	)
 
-    ans := goOne{}
-    var tmp int //読み捨て
-    row.Scan(&ans.time,&ans.from,&ans.to,&tmp);
-    outJson, err := json.Marshal(&ans)
-    if err != nil {
-        panic(err)
-    }
-    w.Header().Set("Content-Type", "application/json")
-    fmt.Fprint(w, string(outJson))
+	ans := goOne{}
+	var tmp int //読み捨て
+	dataErr := row.Scan(&ans.Time, &ans.From, &ans.To, &tmp)
+	if dataErr == sql.ErrNoRows {
+		returnErrCode(w, 1)
+		return
+	} else if dataErr != nil {
+		returnErrCode(w, 10)
+		return
+	}
+
+	outJson, err := json.Marshal(&ans)
+
+	if err != nil {
+		returnErrCode(w, 10)
+		return
+	}
+
+	w.Header().Set("Content-Type", "application/json")
+	fmt.Fprint(w, string(outJson))
+	return
 }
 
 //特定種の最速を返す
-func getGoJson(w http.ResponseWriter, r *http.Request){
-    q := r.URL.Query()
-    row:=getGoTime(q.fromto,q.id);
+func getGoJson(w http.ResponseWriter, r *http.Request) {
+	q := r.URL.Query()
+	fromtoString := q["fromto"][0]
+	idString := q["id"][0]
+	fromto, fromtoOk := strconv.Atoi(fromtoString)
+	id, idOk := strconv.Atoi(idString)
 
-    ans := goOne{}
-    var tmp int
-    row.Scan(&ans.time,&ans.from,&ans.to,&tmp);
-    outJson, err := json.Marshal(&ans)
-    if err != nil {
-        panic(err)
-    }
-    w.Header().Set("Content-Type", "application/json")
-    fmt.Fprint(w, string(outJson))
+	if fromtoOk != nil || idOk != nil {
+		returnErrCode(w, 10)
+		return
+	}
+
+	timeArray := getGoTime(fromto, id)
+	ans := goOne{}
+	ans.Time = timeArray[0]
+	ans.From = timeArray[1]
+	ans.To = timeArray[2]
+
+	outJson, err := json.Marshal(&ans)
+	if err != nil {
+		returnErrCode(w, 10)
+		return
+	}
+	w.Header().Set("Content-Type", "application/json")
+	fmt.Fprint(w, string(outJson))
+	return
 }
 
 //行き各種の最速をすべて返す
-func getGoFullJson(w http.ResponseWriter, r *http.Request)  {
-    ans := goFull{}
-    var [2]from int
-    var [3]to int
+func getGoFullJson(w http.ResponseWriter, r *http.Request) {
+	ans := goFull{}
+	var from [2]int
+	var to [3]int
+	var tmp [3]int
 
-    for i := 0; i < 2; i++ {
-        from[i]=getGoTime(0,i)
-    }
-    for i := 0; i < 3; i++ {
-        to[i]=getGoTime(1,i)
-    }
+	for i := 0; i < 2; i++ {
+		tmp = getGoTime(0, i)
+		from[i] = tmp[0]
+	}
+	for i := 0; i < 3; i++ {
+		tmp = getGoTime(1, i)
+		to[i] = tmp[0]
+	}
 
-    ans.fast = checkGoFastTime(from,to)
-    ans.from = from
-    ans.to = to
+	ans.Fast = checkGoFastTime(from, to)
+	ans.From = from
+	ans.To = to
 
-    outJson, err := json.Marshal(&ans)
-    if err != nil {
-        panic(err)
-    }
-    w.Header().Set("Content-Type", "application/json")
-    fmt.Fprint(w, string(outJson))
+	outJson, err := json.Marshal(&ans)
+	if err != nil {
+		returnErrCode(w, 10)
+		return
+	}
+	w.Header().Set("Content-Type", "application/json")
+	fmt.Fprint(w, string(outJson))
+	return
 }
 
-//検索に使う部分、返すのは時間//
-func getGoTime(fromto int,id int) int{
-    dayType := getDayType()
-    nowTime := getNowTime()
+//検索に使う部分、返すのは配列//
+func getGoTime(fromto int, id int) [3]int {
+	dayType := getDayType()
+	nowTime := getNowTime()
+	var ans [3]int
+	var tmp int //読み捨て
 
-    var mode string
+	switch fromto {
+	case 0:
+		row := goDb.QueryRow(
+			"SELECT * FROM GO WHERE time > ? AND stop = ? AND dayType = ? ORDER BY time ASC LIMIT 1",
+			nowTime,
+			id,
+			dayType,
+		)
 
-    if fromto==0{
-        mode="from"
-    }else{
-        mode="to"
-    }
+		row.Scan(&ans[0], &ans[1], &ans[2], &tmp)
+		break
+	case 1:
+		row := goDb.QueryRow(
+			"SELECT * FROM GO WHERE time > ? AND endpoint = ? AND dayType = ? ORDER BY time ASC LIMIT 1",
+			nowTime,
+			id,
+			dayType,
+		)
 
-    row := goDb.QueryRow(
-        `SELECT * FROM "GO"
-        WHERE ?<time AND ?=? AND dayType=?
-        ORDER BY time ASC LIMIT 1`,
-        nowTime,
-        mode,
-        id,
-        dayType,
-    )
+		var ans [3]int
+		var tmp int //読み捨て
+		row.Scan(&ans[0], &ans[1], &ans[2], &tmp)
+		break
+	}
 
-    var time int
-    var [3]tmp int //読み捨て
-    row.Scan(&time,tmp[0],tmp[1],tmp[2])
-    return time
+	return ans
 }
 
-func getReturnFastJson(w http.ResponseWriter, r *http.Request){
-    dayType := getDayType()
-    nowTime := getNowTime()
+func getReturnFastJson(w http.ResponseWriter, r *http.Request) {
+	dayType := getDayType()
+	nowTime := getNowTime()
 
-    row := goDb.QueryRow(
-        `SELECT * FROM "RETURN"
-        WHERE ?<time AND dayType=?
-        ORDER BY time ASC LIMIT 1`,
-        nowTime,
-        dayType
-    )
+	row := returnDb.QueryRow(
+		"SELECT * FROM RETURN WHERE time > ? AND dayType = ? ORDER BY time ASC LIMIT 1",
+		nowTime,
+		dayType,
+	)
 
-    ans := returnOne{}
-    var tmp int //読み捨て
-    row.Scan(&ans.time,&ans.from,&tmp);
-    outJson, err := json.Marshal(&ans)
-    if err != nil {
-        panic(err)
-    }
-    w.Header().Set("Content-Type", "application/json")
-    fmt.Fprint(w, string(outJson))
+	ans := returnOne{}
+	var tmp int //読み捨て
+	dataErr := row.Scan(&ans.Time, &ans.From, &tmp)
+	if dataErr == sql.ErrNoRows {
+		returnErrCode(w, 1)
+		return
+	} else if dataErr != nil {
+		returnErrCode(w, 10)
+		return
+	}
+
+	outJson, err := json.Marshal(&ans)
+
+	if err != nil {
+		returnErrCode(w, 10)
+		return
+	}
+
+	w.Header().Set("Content-Type", "application/json")
+	fmt.Fprint(w, string(outJson))
+	return
 }
 
 //特定種の最速を返す
-func getReturnJson(w http.ResponseWriter, r *http.Request){
-    q := r.URL.Query()
-    row:=getGoTime(q.id);
+func getReturnJson(w http.ResponseWriter, r *http.Request) {
+	q := r.URL.Query()
+	idString := q.Get("id")
+	id, idOk := strconv.Atoi(idString)
 
-    ans := returnOne{}
-    var tmp int
-    row.Scan(&ans.time,&ans.from,&tmp);
-    outJson, err := json.Marshal(&ans)
-    if err != nil {
-        panic(err)
-    }
-    w.Header().Set("Content-Type", "application/json")
-    fmt.Fprint(w, string(outJson))
+	if idOk != nil {
+		returnErrCode(w, 10)
+		return
+	}
+
+	timeArray := getReturnTime(id)
+	ans := returnOne{}
+	ans.Time = timeArray[0]
+	ans.From = timeArray[1]
+
+	outJson, err := json.Marshal(&ans)
+	if err != nil {
+		returnErrCode(w, 10)
+		return
+	}
+	w.Header().Set("Content-Type", "application/json")
+	fmt.Fprint(w, string(outJson))
+	return
 }
 
 //帰り各種の最速をすべて返す
-func getReturnFullJson(w http.ResponseWriter, r *http.Request)  {
-    ans := returnFull{}
-    var [3]from int
+func getReturnFullJson(w http.ResponseWriter, r *http.Request) {
+	ans := returnFull{}
+	var tmp [2]int
+	var from [3]int
 
-    for i := 0; i < 3; i++ {
-        from[i]=getReturnTime(i)
-    }
+	for i := 0; i < 3; i++ {
+		tmp = getReturnTime(i)
+		from[i] = tmp[0]
+	}
 
-    fast := [2]int{from[0],0}
+	fast := [2]int{from[0], 0}
 
-    for i := 1; i < 3; i++ {
-        if(fast[0]>from[i]){
-            fast[0]==from[i]
-            fast[1]==i
-        }
-    }
+	for i := 1; i < 3; i++ {
+		if fast[0] > from[i] {
+			fast[0] = from[i]
+			fast[1] = i
+		}
+	}
 
-    ans.fast = fast
-    ans.from = from
+	ans.Fast = fast
+	ans.From = from
 
-    outJson, err := json.Marshal(&ans)
-    if err != nil {
-        panic(err)
-    }
-    w.Header().Set("Content-Type", "application/json")
-    fmt.Fprint(w, string(outJson))
+	outJson, err := json.Marshal(&ans)
+	if err != nil {
+		returnErrCode(w, 10)
+		return
+	}
+	w.Header().Set("Content-Type", "application/json")
+	fmt.Fprint(w, string(outJson))
+	return
 }
 
-func getReturnTime(id int) int{
-    dayType := getDayType()
-    nowTime := getNowTime()
-    row := returnDb.QueryRow(
-        `SELECT * FROM "RETURN"
-        WHERE ?<time AND from=? AND dayType=?
-        ORDER BY time ASC LIMIT 1`,
-        nowTime,
-        id,
-        dayType
-    )
+func getReturnTime(id int) [2]int {
+	dayType := getDayType()
+	nowTime := getNowTime()
+	row := returnDb.QueryRow(
+		"SELECT * FROM RETURN WHERE time > ? AND stop = ? AND dayType = ? ORDER BY time ASC LIMIT 1",
+		nowTime,
+		id,
+		dayType,
+	)
 
-    var time int
-    var [2]tmp int //読み捨て
-    row.Scan(&time,tmp[0],tmp[1])
-    return time
+	var ans [2]int
+	var tmp int //読み捨て
+	row.Scan(&ans[0], &ans[1], &tmp)
+	return ans
 }
 
-func getDayType()  {
-    var n int
-    t := time.Now()
-    if t.Weekday()==0{
-        n = 2
-    }else if t.Weekday()<6{
-        n = 0
-    }else{
-        n = 1
-    }
-    return n
+func getDayType() int {
+	var n int
+	t := time.Now()
+	if t.Weekday() == 0 {
+		n = 2
+	} else if t.Weekday() < 6 {
+		n = 0
+	} else {
+		n = 1
+	}
+	return n
 }
 
-func getNowTime(){
-    t := time.Now();
-    return t.Hour()*60+t.Minute()
+func getNowTime() int {
+	t := time.Now()
+	return t.Hour()*60 + t.Minute()
 }
 
-func checkGoFastTime([2]a [3]b) {
-    fromFast := [2]int{a[0],0}
-    if(a[1]<fromFast[0]){
-        fromFast[0]=a[1]
-        fromFast[1]=1
-    }
+func checkGoFastTime(a [2]int, b [3]int) [3]int {
+	fromFast := [2]int{a[0], 0}
+	if a[1] < fromFast[0] {
+		fromFast[0] = a[1]
+		fromFast[1] = 1
+	}
 
-    toFast := [2]int{b[0],0}
-    for i := 1; i < 3; i++ {
-        if b[i]<toFast[0]{
-            toFast[0]=b[i]
-            toFast[1]=i
-        }
-    }
-    return [fromFast[0],fromFast[1],toFast[1]]
+	toFast := [2]int{b[0], 0}
+	for i := 1; i < 3; i++ {
+		if b[i] < toFast[0] {
+			toFast[0] = b[i]
+			toFast[1] = i
+		}
+	}
+	ans := [3]int{fromFast[0], fromFast[1], toFast[1]}
+	return ans
+}
+
+func returnErrCode(w http.ResponseWriter, code int) {
+	w.Header().Set("Content-Type", "application/json")
+	var out string = "{\"error_id\":" + strconv.Itoa(code) + "}"
+	outJson, err := json.Marshal(out)
+	if err != nil {
+		panic(err)
+	}
+	fmt.Fprint(w, outJson)
+	return
 }
