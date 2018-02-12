@@ -2,9 +2,10 @@
 <html>
     <head>
         <meta charset="utf-8">
+        <meta name="viewport" content="width=device-width,initial-scale=1.0,minimum-scale=1.0,maximum-scale=1.0,user-scalable=no">
         <title>kaitBusTime</title>
-        <link rel="stylesheet" href="html5reset-1.6.1.css">
-        <link rel="stylesheet" href="style.css">
+        <link rel="stylesheet" href="css/html5reset-1.6.1.css">
+        <link rel="stylesheet" href="css/style.css">
     </head>
     <body>
         <div id="first" style="display:block">
@@ -26,16 +27,16 @@
             </div>
             <hr>
             <div id="core" class="circle">
-                <div id="title">Next Bus</div>
-                <div id="time">$TIME</div>
-                <div id="inmin">in $INMIN</div>
-                <div id="stop">at $STOP</div>
+                <div id="title">最速バス</div>
+                <div id="time"></div>
+                <div id="inmin"></div>
+                <div id="stop"></div>
             </div>
 
             <div id="menu" class="setDiv">
-                <div id="to">
+                <!--div id="to">
                     行き先<br />変更
-                </div>
+                </div-->
                 <div id="from">
                     乗り場<br />変更
                 </div>
@@ -43,5 +44,6 @@
         </div>
 
     </body>
-    <script type="text/javascript" src="uiOperation.js"></script>
+    <script type="text/javascript" src="js/uiOperation.js"></script>
+    <script type="text/javascript" src="js/getTimeData.js"></script>
 </html>
