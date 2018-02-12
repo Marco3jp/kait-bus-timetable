@@ -18,6 +18,11 @@
     right: 0;
 }
 
+body {
+  -webkit-text-size-adjust: 100%;
+  user-select: none;
+}
+
 .loader,
 .loader:before,
 .loader:after {
@@ -86,11 +91,9 @@
   }
 }
 
-
 hr{
     border: solid thin rgba(33,33,33 ,1);
 }
-
 
 #first > div{
     width: 80vw;
@@ -106,7 +109,7 @@ hr{
 }
 
 #mode{
-    margin-top: 7.5vh;
+    margin-top: 3vh;
     width: 100%;
     text-align: center;
     font-size: 5vh;
@@ -132,18 +135,18 @@ hr{
 }
 
 #time{
-    margin-top: 5vh;
-    font-size: 10vh;
+    margin-top: 4vh;
+    font-size: 8vh;
 }
 
 #inmin{
-    margin-top: 4vh;
+    margin-top: 2vh;
     font-size: 5vh;
 }
 
 #stop{
-    margin-top: 1vh;
-    font-size: 5vh;
+    margin-top: 2vh;
+    font-size: 4.5vh;
 }
 
 #menu > div{
