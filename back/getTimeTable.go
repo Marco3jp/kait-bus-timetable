@@ -59,6 +59,7 @@ func main() {
 
 //最速を返す関数
 func getGoFastJson(w http.ResponseWriter, r *http.Request) {
+	w = setACAO(w)
 	dayType := getDayType()
 	nowTime := getNowTime()
 
@@ -93,6 +94,7 @@ func getGoFastJson(w http.ResponseWriter, r *http.Request) {
 
 //特定種の最速を返す
 func getGoJson(w http.ResponseWriter, r *http.Request) {
+	w = setACAO(w)
 	q := r.URL.Query()
 	fromtoString := q["fromto"][0]
 	idString := q["id"][0]
@@ -122,6 +124,7 @@ func getGoJson(w http.ResponseWriter, r *http.Request) {
 
 //行き各種の最速をすべて返す
 func getGoFullJson(w http.ResponseWriter, r *http.Request) {
+	w = setACAO(w)
 	ans := goFull{}
 	var from [2]int
 	var to [3]int
@@ -176,8 +179,6 @@ func getGoTime(fromto int, id int) [3]int {
 			dayType,
 		)
 
-		var ans [3]int
-		var tmp int //読み捨て
 		row.Scan(&ans[0], &ans[1], &ans[2], &tmp)
 		break
 	}
@@ -186,6 +187,7 @@ func getGoTime(fromto int, id int) [3]int {
 }
 
 func getReturnFastJson(w http.ResponseWriter, r *http.Request) {
+	w = setACAO(w)
 	dayType := getDayType()
 	nowTime := getNowTime()
 
@@ -220,6 +222,7 @@ func getReturnFastJson(w http.ResponseWriter, r *http.Request) {
 
 //特定種の最速を返す
 func getReturnJson(w http.ResponseWriter, r *http.Request) {
+	w = setACAO(w)
 	q := r.URL.Query()
 	idString := q.Get("id")
 	id, idOk := strconv.Atoi(idString)
@@ -246,6 +249,7 @@ func getReturnJson(w http.ResponseWriter, r *http.Request) {
 
 //帰り各種の最速をすべて返す
 func getReturnFullJson(w http.ResponseWriter, r *http.Request) {
+	w = setACAO(w)
 	ans := returnFull{}
 	var tmp [2]int
 	var from [3]int
@@ -330,6 +334,7 @@ func checkGoFastTime(a [2]int, b [3]int) [3]int {
 }
 
 func returnErrCode(w http.ResponseWriter, code int) {
+	w = setACAO(w)
 	w.Header().Set("Content-Type", "application/json")
 	var out string = "{\"error_id\":" + strconv.Itoa(code) + "}"
 	outJson, err := json.Marshal(out)
@@ -338,4 +343,9 @@ func returnErrCode(w http.ResponseWriter, code int) {
 	}
 	fmt.Fprint(w, outJson)
 	return
+}
+
+func setACAO(w http.ResponseWriter) http.ResponseWriter {
+	w.Header().Set("Access-Control-Allow-Origin", "*")
+	return w
 }
