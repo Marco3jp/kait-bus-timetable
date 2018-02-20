@@ -1,5 +1,5 @@
 function getTimeData(){
-    var req = new XMLHttpRequest();
+    let req = new XMLHttpRequest();
 
     req.onreadystatechange = function() {
       if (req.readyState == 4) { // 通信の完了時
