@@ -19,10 +19,10 @@ function getTimeData(){
     //dataはtrueがgo,falseがreturn
     switch (mode) {
         case 0:
-        req.open('GET', 'http://marco.plus:7650/api/goFull' , true);
+        req.open('GET', 'http://marco.plus/api/goFull' , true);
             break;
         case 1:
-        req.open('GET', 'http://marco.plus:7650/api/returnFull' , true);
+        req.open('GET', 'http://marco.plus/api/returnFull' , true);
             break;
     }
     req.send(null);
