@@ -262,7 +262,7 @@ func getReturnFullJson(w http.ResponseWriter, r *http.Request) {
 	fast := [2]int{from[0], 0}
 
 	for i := 1; i < 3; i++ {
-		if fast[0] > from[i] {
+		if (fast[0] > from[i] && from[i] != 0) || fast[0] == 0 {
 			fast[0] = from[i]
 			fast[1] = i
 		}
@@ -317,14 +317,14 @@ func getNowTime() int {
 
 func checkGoFastTime(a [2]int, b [3]int) [3]int {
 	fromFast := [2]int{a[0], 0}
-	if a[1] < fromFast[0] {
+	if (a[1] < fromFast[0] && a[1] != 0) || fromFast[0] == 0 {
 		fromFast[0] = a[1]
 		fromFast[1] = 1
 	}
 
 	toFast := [2]int{b[0], 0}
 	for i := 1; i < 3; i++ {
-		if b[i] < toFast[0] {
+		if (b[i] < toFast[0] && b[i] != 0) || toFast[0] == 0 {
 			toFast[0] = b[i]
 			toFast[1] = i
 		}
