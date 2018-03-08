@@ -16,7 +16,6 @@ document.getElementById("return").addEventListener(mytap, function(){
     mode=1;
     document.getElementById("mode").innerHTML = "帰り";
     nextStep();
-    //document.getElementById("to").style.display = "none";
 }, false);
 
 
@@ -40,7 +39,11 @@ function displayTime(h,m,inmin,id){
         docTime.style.fontSize = "9vh";
         docTime.style.marginTop = "4vh";
         docStop.style.marginTop = "2vh";
-        docTime.textContent = h + ":" + m;
+        if (m < 10) {
+            docTime.textContent = h + ":0" + m;
+        }else {
+            docTime.textContent = h + ":" + m;
+        }
         document.getElementById("inmin").textContent = "約" + inmin + "分後";
     }
     docStop.textContent = "乗り場:" + fromId[mode][id];
@@ -65,7 +68,6 @@ function getTime(){
 }
 
 document.getElementById("from").addEventListener(mytap, function(){
-    //to = 0;
     let docFrom = document.getElementById("from");
     let tmpH=Math.floor(timeTable.from[from]/60);
     let tmpM=timeTable.from[from]-tmpH*60;
@@ -93,21 +95,3 @@ document.getElementById("from").addEventListener(mytap, function(){
         from = 0;
     }
 }, false);
-
-/*
-document.getElementById("to").addEventListener(mytap, function(){
-    from = 0;
-    var tmpH=floor(timeTable.to[to]/60);
-    var tmpM=timeTable.to[to]-tmpH*60;
-    var tmpTime=getTime();
-    tmpTime -= timeTable.to[to];
-
-    displayTime(tmpH,tmpM,tmpTime,to);
-
-    if(to < 2) {
-        to++;
-    }else if(to === 2){
-        to = 0;
-    }
-}, false);
-*/
